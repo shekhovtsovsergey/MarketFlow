@@ -2,9 +2,8 @@ package ru.shekhovtsov.service;
 
 import org.springframework.stereotype.Service;
 import ru.shekhovtsov.dao.ProductDao;
-import ru.shekhovtsov.model.Product;
-
-import java.util.List;
+import ru.shekhovtsov.dto.ProductRequestDto;
+import ru.shekhovtsov.dto.ProductResponseDto;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -16,32 +15,9 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    public void createProduct(Product product) {
-        productDao.createProduct(product);
+    public ProductResponseDto reserveProduct(ProductRequestDto productRequestDto) {
+      return productDao.reserveProduct(productRequestDto);
     }
 
-    @Override
-    public Product getProductById(Long id) {
-        return productDao.getProductById(id);
-    }
 
-    @Override
-    public List<Product> getAllProducts() {
-        return productDao.getAllProducts();
-    }
-
-    @Override
-    public void updateProduct(Product product) {
-        productDao.updateProduct(product);
-    }
-
-    @Override
-    public void deleteProduct(Long id) {
-        productDao.deleteProduct(id);
-    }
-
-    @Override
-    public List<Product> getProductsByUserId(Long id) {
-        return productDao.getProductByUserId(id);
-    }
 }

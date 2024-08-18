@@ -1,17 +1,11 @@
 package ru.shekhovtsov.dao;
 
 
-import ru.shekhovtsov.model.Product;
-
-import java.util.List;
+import ru.shekhovtsov.dto.ProductRequestDto;
+import ru.shekhovtsov.dto.ProductResponseDto;
 
 public interface ProductDao {
 
-    void createProduct(Product product);
-    Product getProductById(Long id);
-    List<Product> getAllProducts();
-    List<Product> getProductByUserId(Long id);
-    void updateProduct(Product product);
-    void deleteProduct(Long id);
+    ProductResponseDto reserveProduct(ProductRequestDto productRequestDto);
 
 }

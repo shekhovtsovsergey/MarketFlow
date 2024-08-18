@@ -1,8 +1,7 @@
 server:
-  port: 8081
+  port: 8080
   servlet:
     context-path: /
-
   spring:
     datasource:
       driver-class-name: org.h2.Driver
@@ -20,3 +19,4 @@ server:
           web-allow-others: true
     log4j:
       rootLogger: debug
+product-service-url: http://localhost:8081/products/reserve

@@ -2,15 +2,15 @@ package ru.shekhovtsov.dao;
 
 
 import org.springframework.stereotype.Repository;
-import ru.shekhovtsov.model.Product;
+import ru.shekhovtsov.dto.ProductRequestDto;
+import ru.shekhovtsov.dto.ProductResponseDto;
 
 import javax.sql.DataSource;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 @Repository
 public class ProductDaoImpl implements ProductDao {
@@ -22,116 +22,37 @@ public class ProductDaoImpl implements ProductDao {
     }
 
     @Override
-    public void createProduct(Product product) {
-        String sql = "INSERT INTO products (user_id, account_number, balance, product_type) VALUES (?, ?, ?, ?)";
+    public ProductResponseDto reserveProduct(ProductRequestDto productRequestDto) {
+        Long productId = productRequestDto.getProductId();
+        Integer requestedQuantity = productRequestDto.getQuantity();
+        String selectSql = "SELECT quantity, price FROM products WHERE id = ?";
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, product.getUserId());
-            statement.setString(2, product.getAccountNumber());
-            statement.setBigDecimal(3, product.getBalance());
-            statement.setString(4, product.getProductType());
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException("Error creating product", e);
-        }
-    }
+             PreparedStatement selectStatement = connection.prepareStatement(selectSql)) {
+            selectStatement.setLong(1, productId);
+            ResultSet rs = selectStatement.executeQuery();
 
-    @Override
-    public Product getProductById(Long id) {
-        String sql = "SELECT * FROM products WHERE id = ?";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, id);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                if (resultSet.next()) {
-                    return new Product(
-                            resultSet.getLong("id"),
-                            resultSet.getLong("user_id"),
-                            resultSet.getString("account_number"),
-                            resultSet.getBigDecimal("balance"),
-                            resultSet.getString("product_type")
-                    );
-                }
+            if (!rs.next()) {
+                return new ProductResponseDto(productId, null, null, false, "Продукт не найден.");
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Error getting product by id", e);
-        }
-        return null;
-    }
 
-    @Override
-    public List<Product> getAllProducts() {
-        String sql = "SELECT * FROM products";
-        List<Product> products = new ArrayList<>();
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            try (ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    products.add(new Product(
-                            resultSet.getLong("id"),
-                            resultSet.getLong("user_id"),
-                            resultSet.getString("account_number"),
-                            resultSet.getBigDecimal("balance"),
-                            resultSet.getString("product_type")
-                    ));
-                }
+            Integer availableQuantity = rs.getInt("quantity");
+            BigDecimal price = rs.getBigDecimal("price");
+
+            if (availableQuantity < requestedQuantity) {
+                return new ProductResponseDto(productId, availableQuantity, price.multiply(BigDecimal.valueOf(availableQuantity)), false, "Недостаточно продуктов на складе.");
             }
-        } catch (SQLException e) {
-            throw new RuntimeException("Error reading products from database: " + e.getMessage(), e);
-        }
-        return products;
-    }
-    @Override
-    public List<Product> getProductByUserId(Long userId) {
-        String sql = "SELECT * FROM products WHERE user_id = ?";
-        List<Product> products = new ArrayList<>();
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, userId);
-            try (ResultSet resultSet = statement.executeQuery()) {
-                while (resultSet.next()) {
-                    products.add(new Product(
-                            resultSet.getLong("id"),
-                            resultSet.getLong("user_id"),
-                            resultSet.getString("account_number"),
-                            resultSet.getBigDecimal("balance"),
-                            resultSet.getString("product_type")
-                    ));
-                }
+
+            String updateSql = "UPDATE products SET quantity = quantity - ? WHERE id = ?";
+            try (PreparedStatement updateStatement = connection.prepareStatement(updateSql)) {
+                updateStatement.setInt(1, requestedQuantity);
+                updateStatement.setLong(2, productId);
+                updateStatement.executeUpdate();
             }
+
+            BigDecimal totalPrice = price.multiply(BigDecimal.valueOf(requestedQuantity));
+            return new ProductResponseDto(productId, requestedQuantity, totalPrice, true, "Продукт успешно зарезервирован.");
         } catch (SQLException e) {
-            throw new RuntimeException("Error reading products from database: " + e.getMessage(), e);
-        }
-        return products;
-    }
-
-
-
-    @Override
-    public void updateProduct(Product product) {
-        String sql = "UPDATE products SET user_id = ?, account_number = ?, balance = ?, product_type = ? WHERE id = ?";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, product.getUserId());
-            statement.setString(2, product.getAccountNumber());
-            statement.setBigDecimal(3, product.getBalance());
-            statement.setString(4, product.getProductType());
-            statement.setLong(5, product.getId());
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException("Error updating product", e);
-        }
-    }
-
-    @Override
-    public void deleteProduct(Long id) {
-        String sql = "DELETE FROM products WHERE id = ?";
-        try (Connection connection = dataSource.getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setLong(1, id);
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException("Error deleting product", e);
+            throw new RuntimeException("Ошибка при резервировании продукта", e);
         }
     }
 }

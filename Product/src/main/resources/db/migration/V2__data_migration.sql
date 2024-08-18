@@ -1,14 +1,12 @@
-INSERT INTO users (username) VALUES
-                                 ('user1'),
-                                 ('user2'),
-                                 ('user3');
-
-INSERT INTO products (user_id, account_number, balance, product_type) VALUES
-                                                                          (1, '1234567890', 1000.00, 'Account'),
-                                                                          (1, '9876543210', 500.00, 'Card'),
-                                                                          (2, '1111111111', 2000.00, 'Account'),
-                                                                          (3, '2222222222', 1500.00, 'Card');
-
-SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC';
-SELECT * FROM users;
+INSERT INTO products (name, quantity, price) VALUES
+                                                 ('Яблоко', 100, 50.00),
+                                                 ('Банан', 150, 30.00),
+                                                 ('Апельсин', 200, 40.00),
+                                                 ('Груша', 80, 60.00),
+                                                 ('Киви', 50, 70.00),
+                                                 ('Виноград', 120, 90.00),
+                                                 ('Персик', 90, 80.00),
+                                                 ('Слива', 110, 55.00),
+                                                 ('Мандарин', 130, 45.00),
+                                                 ('Арбуз', 60, 100.00);
 SELECT * FROM products;
