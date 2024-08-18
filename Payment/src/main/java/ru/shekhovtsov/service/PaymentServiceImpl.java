@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import ru.shekhovtsov.dao.AccountDao;
-import ru.shekhovtsov.dao.PaymentDao;
+import ru.shekhovtsov.dao.AccountRepository;
+import ru.shekhovtsov.dao.PaymentRepository;
 import ru.shekhovtsov.dto.PaymentRequestDto;
 import ru.shekhovtsov.dto.PaymentResponseDto;
 import ru.shekhovtsov.dto.ProductRequestDto;
@@ -14,6 +14,7 @@ import ru.shekhovtsov.model.Account;
 import ru.shekhovtsov.model.Payment;
 import ru.shekhovtsov.model.PaymentStatus;
 
+import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.util.Optional;
 
@@ -21,8 +22,8 @@ import java.util.Optional;
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
-    private final PaymentDao paymentDao;
-    private final AccountDao accountDao;
+    private final PaymentRepository paymentDao;
+    private final AccountRepository accountDao;
     private final RestTemplate restTemplate;
 
     @Value("${product-service-url}")
@@ -69,21 +70,21 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
 
-
-    private Payment reservePayment(Payment payment) {
-        Optional<Account> debitAccount = accountDao.findByNumber(payment.getDebitAccount());
-        if (debitAccount.isEmpty()) {
+    @Transactional
+    public Payment reservePayment(Payment payment) {
+        Optional<Account> account = accountDao.findByNumber(payment.getDebitAccount());
+        if (account.isEmpty()) {
             throw new IllegalArgumentException("Счет debitAccount не найден в таблице.");
         }
 
         BigDecimal amount = BigDecimal.valueOf(payment.getAmount());
-        if (debitAccount.get().getBalance().compareTo(amount) < 0) {
+        if (account.get().getBalance().compareTo(amount) < 0) {
             throw new IllegalArgumentException("Остаток по счету debitAccount недостаточен.");
         }
 
-        BigDecimal newBalance = debitAccount.get().getBalance().subtract(amount);
-        debitAccount.get().setBalance(newBalance);
-        accountDao.updateBalance(debitAccount.get().getId(), newBalance);
+        BigDecimal newBalance = account.get().getBalance().subtract(amount);
+        account.get().setBalance(newBalance);
+        accountDao.save(account.get());
 
         Payment paymentNew = new Payment(null, payment.getDebitAccount(), CREDIT_ACCOUNT, payment.getAmount(), PaymentStatus.PENDING);
         paymentDao.save(paymentNew);
@@ -95,10 +96,11 @@ public class PaymentServiceImpl implements PaymentService {
     private void cancelPayment(Payment payment) {
         Optional<Account> debitAccount = accountDao.findByNumber(payment.getDebitAccount());
         if (debitAccount.isPresent()) {
+            Account account = debitAccount.get();
             BigDecimal amount = BigDecimal.valueOf(payment.getAmount());
-            BigDecimal newBalance = debitAccount.get().getBalance().add(amount);
-            debitAccount.get().setBalance(newBalance);
-            accountDao.updateBalance(debitAccount.get().getId(), newBalance);
+            BigDecimal newBalance = account.getBalance().add(amount);
+            account.setBalance(newBalance);
+            accountDao.save(account);
         }
         payment.setStatus(PaymentStatus.CANCELLED);
         paymentDao.save(payment);
