@@ -37,7 +37,6 @@ public class PaymentServiceImpl implements PaymentService {
             return new PaymentResponseDto(false, "Клиент не найден.");
         }
 
-        // Создаем новый платеж
         Payment payment = new Payment();
         payment.setDebitAccount(clientAccount.get().getNumber());
         payment.setAmount(100.0);
@@ -87,7 +86,7 @@ public class PaymentServiceImpl implements PaymentService {
         accountDao.updateBalance(debitAccount.get().getId(), newBalance);
 
         Payment paymentNew = new Payment(null, payment.getDebitAccount(), CREDIT_ACCOUNT, payment.getAmount(), PaymentStatus.PENDING);
-        paymentDao.save(paymentNew); // Сохраняем новый платеж
+        paymentDao.save(paymentNew);
 
         return paymentNew;
     }
