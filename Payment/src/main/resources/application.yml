@@ -21,4 +21,4 @@ spring:
 
   log4j:
     rootLogger: debug
-product-service-url: http://localhost:8081/products/reserve
+product-service-url: http://localhost:8081/products

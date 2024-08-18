@@ -18,13 +18,14 @@ import javax.transaction.Transactional;
 import java.math.BigDecimal;
 import java.util.Optional;
 
-@RequiredArgsConstructor
 @Service
+@RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentDao;
     private final AccountRepository accountDao;
     private final RestTemplate restTemplate;
+    private final LimitService limitService;
 
     @Value("${product-service-url}")
     private String productServiceUrl;
@@ -38,9 +39,13 @@ public class PaymentServiceImpl implements PaymentService {
             return new PaymentResponseDto(false, "Клиент не найден.");
         }
 
+        String url = productServiceUrl + "/" + paymentRequestDto.getProductId();
+        BigDecimal price = restTemplate.getForObject(url, BigDecimal.class);
+        BigDecimal amount = price.multiply(BigDecimal.valueOf(paymentRequestDto.getQuantity()));
+
         Payment payment = new Payment();
         payment.setDebitAccount(clientAccount.get().getNumber());
-        payment.setAmount(100.0);
+        payment.setAmount(amount);
 
         Payment savedPayment;
 
@@ -56,12 +61,14 @@ public class PaymentServiceImpl implements PaymentService {
         productRequestDto.setQuantity(paymentRequestDto.getQuantity());
 
 
-        ProductResponseDto productResponse = restTemplate.postForObject(productServiceUrl, productRequestDto, ProductResponseDto.class);
+        ProductResponseDto productResponse = restTemplate.postForObject(productServiceUrl + "/reserve", productRequestDto, ProductResponseDto.class);
 
 
         if (productResponse != null && productResponse.isReserved()) {
             savedPayment.setStatus(PaymentStatus.COMPLETED);
             paymentDao.save(savedPayment);
+            limitService.reduceLimit(paymentRequestDto.getClientId(), savedPayment.getAmount());
+
             return new PaymentResponseDto(true, "Платеж прошел успешно, продукты зарезервированы.");
         } else {
             cancelPayment(savedPayment);
@@ -77,7 +84,7 @@ public class PaymentServiceImpl implements PaymentService {
             throw new IllegalArgumentException("Счет debitAccount не найден в таблице.");
         }
 
-        BigDecimal amount = BigDecimal.valueOf(payment.getAmount());
+        BigDecimal amount = payment.getAmount();
         if (account.get().getBalance().compareTo(amount) < 0) {
             throw new IllegalArgumentException("Остаток по счету debitAccount недостаточен.");
         }
@@ -97,10 +104,11 @@ public class PaymentServiceImpl implements PaymentService {
         Optional<Account> debitAccount = accountDao.findByNumber(payment.getDebitAccount());
         if (debitAccount.isPresent()) {
             Account account = debitAccount.get();
-            BigDecimal amount = BigDecimal.valueOf(payment.getAmount());
+            BigDecimal amount = payment.getAmount();
             BigDecimal newBalance = account.getBalance().add(amount);
             account.setBalance(newBalance);
             accountDao.save(account);
+            limitService.reduceLimit(Long.valueOf(debitAccount.get().getClient().getId()), payment.getAmount());
         }
         payment.setStatus(PaymentStatus.CANCELLED);
         paymentDao.save(payment);

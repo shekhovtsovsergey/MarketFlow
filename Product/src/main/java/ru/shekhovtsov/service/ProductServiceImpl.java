@@ -43,4 +43,15 @@ public class ProductServiceImpl implements ProductService {
         BigDecimal totalPrice = price.multiply(BigDecimal.valueOf(requestedQuantity));
         return new ProductResponseDto(productId, requestedQuantity, totalPrice, true, "Продукт успешно зарезервирован.");
     }
+
+    @Override
+    public BigDecimal getProductPrice(Long productId) {
+        Optional<Product> optionalProduct = productRepository.findById(productId);
+        if (!optionalProduct.isPresent()) {
+            throw new IllegalArgumentException("Продукт не найден.");
+        }
+        Product product = optionalProduct.get();
+        return product.getPrice();
+    }
+
 }

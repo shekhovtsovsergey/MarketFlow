@@ -3,6 +3,7 @@ package ru.shekhovtsov.model;
 import lombok.*;
 
 import javax.persistence.*;
+import java.math.BigDecimal;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,7 +18,7 @@ public class Payment {
     private Long id;
     private String debitAccount;
     private String creditAccount;
-    private Double amount;
+    private BigDecimal amount;
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;
 }
