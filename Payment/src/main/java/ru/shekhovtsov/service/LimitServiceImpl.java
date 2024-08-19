@@ -41,8 +41,8 @@ public class LimitServiceImpl implements LimitService {
 
     @Override
     @Transactional
-    //@Scheduled(cron = "0 0 0 * * ?")
-    @Scheduled(cron = "0 * * * * ?")
+    @Scheduled(cron = "0 0 0 * * ?")
+    //@Scheduled(cron = "0 * * * * ?")
     public void resetLimits() {
         limitRepository.findAll().forEach(limit -> {
             limit.setDailyLimit(BigDecimal.valueOf(10000.00));
